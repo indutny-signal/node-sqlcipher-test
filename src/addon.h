@@ -53,6 +53,9 @@ class AutoResetStatement {
 
   ~AutoResetStatement();
 
+  // Force reset statement now and clear `enabled_`
+  void Reset();
+
  private:
   Statement* stmt_;
   bool enabled_;

@@ -482,14 +482,16 @@ Napi::Value Statement::Step(const Napi::CallbackInfo& info) {
 
   int r = sqlite3_step(stmt->handle_);
 
+  AutoResetStatement auto_reset(stmt, is_get.Value());
+
   // No more rows
   if (r == SQLITE_DONE) {
-    stmt->Reset();
+    auto_reset.Reset();
     return Napi::Value();
   }
 
-  AutoResetStatement _(stmt, is_get.Value());
   if (r != SQLITE_ROW) {
+    auto_reset.Reset();
     return stmt->db_->ThrowSqliteError(env, r);
   }
 
@@ -498,6 +500,7 @@ Napi::Value Statement::Step(const Napi::CallbackInfo& info) {
   // In pluck mode - return the value of the first column
   if (stmt->is_pluck_) {
     if (column_count != 1) {
+      auto_reset.Reset();
       NAPI_THROW(Napi::Error::New(env, "Invalid column count for pluck"),
                  Napi::Value());
     }
@@ -712,6 +715,11 @@ Napi::Value Statement::GetColumnValue(Napi::Env env, int column) {
       return env.Null();
   }
   return Napi::Value();
+}
+
+void AutoResetStatement::Reset() {
+  stmt_->Reset();
+  enabled_ = false;
 }
 
 AutoResetStatement::~AutoResetStatement() {
